@@ -65,29 +65,63 @@ public class UserDao {
 
     public void deleteAll() throws SQLException {
         Connection c = null;
-        PreparedStatement pstmt;
-
-        c = connectionMaker.makeConnection();
-        pstmt = c.prepareStatement("DELETE FROM users");
-        pstmt.executeUpdate();
-        pstmt.close();
-        c.close();
+        PreparedStatement pstmt = null;
+        try{
+            c = connectionMaker.makeConnection();
+            pstmt = c.prepareStatement("DELETE FROM users");
+            pstmt.executeUpdate();
+        }catch(SQLException e){
+            throw new RuntimeException(e);
+        }finally {      //error가 나도 실행되는 블럭
+            if(pstmt != null){
+                try {
+                    pstmt.close();
+                } catch (SQLException e) {
+                }
+            }
+            if (c!=null){
+                try {
+                    c.close();
+                } catch (SQLException e) {
+                }
+            }
+        }
 
     }
 
     public int getCount() throws SQLException {
-        Connection c;
-        PreparedStatement pstmt;
+        Connection c = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
 
-        c = connectionMaker.makeConnection();
-        pstmt = c.prepareStatement("SELECT count(*) FROM users");
-        ResultSet rs = pstmt.executeQuery();
-        rs.next();
-        int count = rs.getInt(1);
+        try {
+            c = connectionMaker.makeConnection();
+            pstmt = c.prepareStatement("SELECT count(*) FROM users");
+            rs = pstmt.executeQuery();
+            rs.next();
+            return rs.getInt(1);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (rs != null){
+                try {
+                    rs.close();
+                } catch (SQLException e){
+                }
+            }
+            if(pstmt != null){
+                try {
+                    pstmt.close();
+                } catch (SQLException e) {
+                }
+            }
+            if (c!=null){
+                try {
+                    c.close();
+                } catch (SQLException e) {
+                }
+            }
+        }
 
-        rs.close();
-        pstmt.close();
-        c.close();
-        return count;
     }
 }
