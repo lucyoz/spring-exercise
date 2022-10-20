@@ -64,4 +64,20 @@ public class UserDao {
         c.close();
 
     }
+
+    public int getCount() throws SQLException {
+        Connection c;
+        PreparedStatement pstmt;
+
+        c = connectionMaker.makeConnection();
+        pstmt = c.prepareStatement("SELECT count(*) FROM users");
+        ResultSet rs = pstmt.executeQuery();
+        rs.next();
+        int count = rs.getInt(1);
+
+        rs.close();
+        pstmt.close();
+        c.close();
+        return count;
+    }
 }
