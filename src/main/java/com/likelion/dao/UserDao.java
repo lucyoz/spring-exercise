@@ -3,6 +3,7 @@ package com.likelion.dao;
 import com.likelion.domain.User;
 import org.springframework.dao.EmptyResultDataAccessException;
 
+import javax.swing.plaf.nimbus.State;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,6 +17,31 @@ public class UserDao {
     }
     public UserDao(ConnectionMaker connectionMaker){
         this.connectionMaker = connectionMaker;
+    }
+
+    public void jdbcContextWithStatementStrategy(StatementStrategy stmt){
+        Connection c = null;
+        PreparedStatement pstmt = null;
+        try{
+            c = connectionMaker.makeConnection();
+            pstmt = stmt.makePreparedStatement(c);
+            pstmt.executeUpdate();
+        }catch(SQLException e){
+            throw new RuntimeException(e);
+        }finally {      //error가 나도 실행되는 블럭
+            if(pstmt != null){
+                try {
+                    pstmt.close();
+                } catch (SQLException e) {
+                }
+            }
+            if (c!=null){
+                try {
+                    c.close();
+                } catch (SQLException e) {
+                }
+            }
+        }
     }
 
     public void add(User user) throws SQLException {
@@ -64,29 +90,7 @@ public class UserDao {
     }
 
     public void deleteAll() throws SQLException {
-        Connection c = null;
-        PreparedStatement pstmt = null;
-        try{
-            c = connectionMaker.makeConnection();
-            pstmt = c.prepareStatement("DELETE FROM users");
-            pstmt.executeUpdate();
-        }catch(SQLException e){
-            throw new RuntimeException(e);
-        }finally {      //error가 나도 실행되는 블럭
-            if(pstmt != null){
-                try {
-                    pstmt.close();
-                } catch (SQLException e) {
-                }
-            }
-            if (c!=null){
-                try {
-                    c.close();
-                } catch (SQLException e) {
-                }
-            }
-        }
-
+        jdbcContextWithStatementStrategy(new DeleteAllStrategy());
     }
 
     public int getCount() throws SQLException {
@@ -124,4 +128,6 @@ public class UserDao {
         }
 
     }
+
+
 }
