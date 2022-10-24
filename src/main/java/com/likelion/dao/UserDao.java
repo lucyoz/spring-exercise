@@ -3,6 +3,7 @@ package com.likelion.dao;
 import com.likelion.domain.User;
 import org.springframework.dao.EmptyResultDataAccessException;
 
+import javax.sql.DataSource;
 import javax.swing.plaf.nimbus.State;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -10,48 +11,31 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class UserDao {
-    private ConnectionMaker connectionMaker;
+    private DataSource dataSource;
+    private JdbcContext jdbcContext;
 
-    public UserDao(){
-        this.connectionMaker = new AwsConnectionMaker();
-    }
-    public UserDao(ConnectionMaker connectionMaker){
-        this.connectionMaker = connectionMaker;
-    }
-
-    public void jdbcContextWithStatementStrategy(StatementStrategy stmt){
-        Connection c = null;
-        PreparedStatement pstmt = null;
-        try{
-            c = connectionMaker.makeConnection();
-            pstmt = stmt.makePreparedStatement(c);
-            pstmt.executeUpdate();
-        }catch(SQLException e){
-            throw new RuntimeException(e);
-        }finally {      //error가 나도 실행되는 블럭
-            if(pstmt != null){
-                try {
-                    pstmt.close();
-                } catch (SQLException e) {
-                }
-            }
-            if (c!=null){
-                try {
-                    c.close();
-                } catch (SQLException e) {
-                }
-            }
-        }
+    public UserDao(DataSource dataSource){
+        this.dataSource = dataSource;
+        this.jdbcContext = new JdbcContext(dataSource);
     }
 
     public void add(User user) throws SQLException {
-        AddStrategy addStrategy = new AddStrategy(user);
-        jdbcContextWithStatementStrategy(addStrategy);
-
+        jdbcContext.workWithStatementStrategy(new StatementStrategy() {
+            @Override
+            public PreparedStatement makePreparedStatement(Connection connection) throws SQLException {
+                PreparedStatement ps = connection.prepareStatement(
+                        "INSERT INTO users(id, name, password) values(?, ?, ?)"
+                );
+                ps.setString(1, user.getId());
+                ps.setString(2,user.getName());
+                ps.setString(3, user.getPassword());
+                return ps;
+            }
+        });
     }
 
     public User findById(String id) throws SQLException {
-        Connection conn = connectionMaker.makeConnection();
+        Connection conn = dataSource.getConnection();
 
         PreparedStatement ps = conn.prepareStatement(
                 "SELECT id, name, password FROM users WHERE id = ?"
@@ -78,7 +62,12 @@ public class UserDao {
     }
 
     public void deleteAll() throws SQLException {
-        jdbcContextWithStatementStrategy(new DeleteAllStrategy());
+        jdbcContext.workWithStatementStrategy(new StatementStrategy() {
+            @Override
+            public PreparedStatement makePreparedStatement(Connection connection) throws SQLException {
+                return connection.prepareStatement("delete from users");
+            }
+        });
     }
 
     public int getCount() throws SQLException {
@@ -87,7 +76,7 @@ public class UserDao {
         ResultSet rs = null;
 
         try {
-            c = connectionMaker.makeConnection();
+            c = dataSource.getConnection();
             pstmt = c.prepareStatement("SELECT count(*) FROM users");
             rs = pstmt.executeQuery();
             rs.next();
