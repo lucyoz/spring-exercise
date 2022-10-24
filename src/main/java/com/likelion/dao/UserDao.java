@@ -61,13 +61,11 @@ public class UserDao {
 
     }
 
+
+
     public void deleteAll() throws SQLException {
-        jdbcContext.workWithStatementStrategy(new StatementStrategy() {
-            @Override
-            public PreparedStatement makePreparedStatement(Connection connection) throws SQLException {
-                return connection.prepareStatement("delete from users");
-            }
-        });
+        this.jdbcContext.executeSql("delete from users");
+        //쿼리만 넘기게 함.
     }
 
     public int getCount() throws SQLException {
